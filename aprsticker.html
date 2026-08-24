@@ -183,6 +183,7 @@
 
 <script>
   const BASE_URL = "https://aprs-server.onrender.com";
+  let isFirstLoad = true;
 
   async function fetchTickerData() {
     const ledIndicator = document.getElementById('led-indicator');
@@ -222,7 +223,12 @@
           });
         }
 
-        track.innerHTML = htmlContent;
+        // Setzt den Inhalt nur beim initialen Laden oder wenn der Platzhalter aktiv war
+        if (isFirstLoad || track.innerHTML.includes("Lade APRS")) {
+          track.innerHTML = htmlContent;
+          isFirstLoad = false;
+        }
+
       } else {
         track.innerHTML = `<div class="ticker-item">Keine aktuellen Baken in der letzten Stunde empfangen.</div>`;
       }
@@ -235,7 +241,8 @@
   }
 
   fetchTickerData();
-  setInterval(fetchTickerData, 30000);
+  // Alle 3 Minuten (180000 ms) im Hintergrund aktualisieren, damit die Animation ruhig durchläuft
+  setInterval(fetchTickerData, 180000);
 </script>
 
 </body>
