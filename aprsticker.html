@@ -194,6 +194,7 @@
       const response = await fetch(`${BASE_URL}/history.json?hours=1`);
       if (!response.ok) throw new Error("HTTP Fehler " + response.status);
 
+      // Direktes Einlesen des JSON-Arrays vom Server
       const data = await response.json();
       
       ledIndicator.classList.add('online');
@@ -207,7 +208,7 @@
         for (let i = 0; i < 2; i++) {
           recentItems.forEach(item => {
             const timeStr = item.time ? new Date(item.time).toLocaleTimeString('de-DE', {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : '';
-            const commentText = item.comment ? item.comment.replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
+            const symbolStr = item.symbol ? `[${item.symbol}]` : '';
             
             const cleanCall = item.callsign.split('-')[0].trim();
             const qrzUrl = `https://www.qrz.com/db/${encodeURIComponent(cleanCall)}`;
@@ -217,13 +218,12 @@
                 <span class="ticker-time">[${timeStr}]</span>
                 <span class="ticker-call" onclick="window.open('${qrzUrl}', '_blank')" title="Auf QRZ.com öffnen: ${cleanCall}">${item.callsign}</span>
                 <span class="ticker-coords">(${item.lat.toFixed(4)}, ${item.lon.toFixed(4)})</span>
-                <span class="ticker-comment">${commentText}</span>
+                <span class="ticker-comment">${symbolStr}</span>
               </div>
             `;
           });
         }
 
-        // Setzt den Inhalt nur beim initialen Laden oder wenn der Platzhalter aktiv war
         if (isFirstLoad || track.innerHTML.includes("Lade APRS")) {
           track.innerHTML = htmlContent;
           isFirstLoad = false;
@@ -241,7 +241,6 @@
   }
 
   fetchTickerData();
-  // Alle 3 Minuten (180000 ms) im Hintergrund aktualisieren, damit die Animation ruhig durchläuft
   setInterval(fetchTickerData, 180000);
 </script>
 
