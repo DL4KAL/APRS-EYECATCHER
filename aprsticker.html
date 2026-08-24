@@ -95,6 +95,7 @@
       overflow: hidden;
       display: flex;
       align-items: center;
+      cursor: pointer;
     }
 
     .ticker-track {
@@ -104,7 +105,7 @@
       animation: scrollTicker 70s linear infinite;
     }
 
-    /* Bei Mouseover anhalten, damit man bequem auf QRZ.com klicken kann */
+    /* Bei Mouseover anhalten */
     .ticker-container:hover .ticker-track {
       animation-play-state: paused;
     }
@@ -133,17 +134,16 @@
       font-family: monospace;
     }
 
-    /* Klickbares Rufzeichen mit Link-Styling */
+    /* Klickbares Rufzeichen */
     .ticker-call {
       color: #38bdf8;
       font-weight: bold;
-      text-decoration: none;
-      transition: color 0.2s, text-decoration 0.2s;
+      text-decoration: underline;
+      cursor: pointer;
     }
 
     .ticker-call:hover {
       color: #93c5fd;
-      text-decoration: underline;
     }
 
     .ticker-coords {
@@ -208,14 +208,13 @@
             const timeStr = item.time ? new Date(item.time).toLocaleTimeString('de-DE', {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : '';
             const commentText = item.comment ? item.comment.replace(/</g, "&lt;").replace(/>/g, "&gt;") : '';
             
-            // Rufzeichen für QRZ.com aufbereiten (Ssid wie -9 oder -10 entfernen, da QRZ.com das reine Rufzeichen sucht)
             const cleanCall = item.callsign.split('-')[0].trim();
             const qrzUrl = `https://www.qrz.com/db/${encodeURIComponent(cleanCall)}`;
 
             htmlContent += `
               <div class="ticker-item">
                 <span class="ticker-time">[${timeStr}]</span>
-                <a href="${qrzUrl}" target="_blank" rel="noopener noreferrer" class="ticker-call" title="Auf QRZ.com öffnen: ${cleanCall}">${item.callsign}</a>
+                <span class="ticker-call" onclick="window.open('${qrzUrl}', '_blank')" title="Auf QRZ.com öffnen: ${cleanCall}">${item.callsign}</span>
                 <span class="ticker-coords">(${item.lat.toFixed(4)}, ${item.lon.toFixed(4)})</span>
                 <span class="ticker-comment">${commentText}</span>
               </div>
