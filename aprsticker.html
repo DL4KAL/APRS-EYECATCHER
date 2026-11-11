@@ -4,12 +4,12 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  
+
   <!-- SEO Meta-Tags -->
   <title>APRS Live-Ticker – Realtime Datenfluss</title>
   <meta name="description" content="Echtzeit-Laufband des APRS-Datenflusses für Amateurfunk und mobile Stationen.">
   <meta name="robots" content="index, follow">
-  
+
   <style>
     * {
       box-sizing: border-box;
@@ -155,9 +155,6 @@
     .ticker-comment {
       color: #cbd5e1;
       font-style: italic;
-      max-width: 300px;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
   </style>
 </head>
@@ -182,8 +179,18 @@
 </div>
 
 <script>
-  const BASE_URL = "https://aprs-server.onrender.com";
-  let isFirstLoad = true;
+  // Gleicher Supabase-Zugang wie die APRS-Karte
+  const SUPA_URL = "https://acharyaisxfpmvejmhho.supabase.co";
+  const SUPA_ANON = "sb_publishable_-ylVCQEcJiDn41pWdVIRlA_PGekzQI-";
+
+  const HOURS = 1;
+  const REFRESH_MS = 60 * 1000;
+
+  function escapeHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+    }[c]));
+  }
 
   async function fetchTickerData() {
     const ledIndicator = document.getElementById('led-indicator');
@@ -191,47 +198,50 @@
     const track = document.getElementById('ticker-track');
 
     try {
-      const response = await fetch(`${BASE_URL}/history.json?hours=1`);
-      if (!response.ok) throw new Error("HTTP Fehler " + response.status);
+      const since = new Date(Date.now() - HOURS * 3600e3).toISOString();
+      const url = `${SUPA_URL}/rest/v1/aprs_history` +
+        `?select=callsign,latitude,longitude,symbol,timestamp` +
+        `&timestamp=gte.${encodeURIComponent(since)}` +
+        `&order=timestamp.desc` +
+        `&limit=50`;
 
-      // Direktes Einlesen des JSON-Arrays vom Server
-      const data = await response.json();
-      
+      const res = await fetch(url, {
+        headers: { apikey: SUPA_ANON, Authorization: `Bearer ${SUPA_ANON}` }
+      });
+      if (!res.ok) throw new Error("HTTP Fehler " + res.status);
+      const data = await res.json();
+
       ledIndicator.classList.add('online');
       statusText.innerText = "ONLINE";
 
-      if (Array.isArray(data) && data.length > 0) {
-        const recentItems = data.slice(-50).reverse();
-
-        let htmlContent = "";
-        
-        for (let i = 0; i < 2; i++) {
-          recentItems.forEach(item => {
-            const timeStr = item.time ? new Date(item.time).toLocaleTimeString('de-DE', {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : '';
-            const symbolStr = item.symbol ? `[${item.symbol}]` : '';
-            
-            const cleanCall = item.callsign.split('-')[0].trim();
-            const qrzUrl = `https://www.qrz.com/db/${encodeURIComponent(cleanCall)}`;
-
-            htmlContent += `
-              <div class="ticker-item">
-                <span class="ticker-time">[${timeStr}]</span>
-                <span class="ticker-call" onclick="window.open('${qrzUrl}', '_blank')" title="Auf QRZ.com öffnen: ${cleanCall}">${item.callsign}</span>
-                <span class="ticker-coords">(${item.lat.toFixed(4)}, ${item.lon.toFixed(4)})</span>
-                <span class="ticker-comment">${symbolStr}</span>
-              </div>
-            `;
-          });
-        }
-
-        if (isFirstLoad || track.innerHTML.includes("Lade APRS")) {
-          track.innerHTML = htmlContent;
-          isFirstLoad = false;
-        }
-
-      } else {
+      if (!Array.isArray(data) || data.length === 0) {
         track.innerHTML = `<div class="ticker-item">Keine aktuellen Baken in der letzten Stunde empfangen.</div>`;
+        return;
       }
+
+      let htmlContent = "";
+      // Doppelt ausgeben, damit das Laufband nahtlos läuft
+      for (let i = 0; i < 2; i++) {
+        data.forEach(item => {
+          const timeStr = item.timestamp
+            ? new Date(item.timestamp).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
+            : '';
+          const symbolStr = item.symbol ? `[${escapeHtml(item.symbol)}]` : '';
+          const call = escapeHtml(item.callsign);
+          const cleanCall = encodeURIComponent((item.callsign || '').split('-')[0].trim());
+          const qrzUrl = `https://www.qrz.com/db/${cleanCall}`;
+
+          htmlContent += `
+            <div class="ticker-item">
+              <span class="ticker-time">[${timeStr}]</span>
+              <span class="ticker-call" onclick="window.open('${qrzUrl}', '_blank')" title="Auf QRZ.com öffnen">${call}</span>
+              <span class="ticker-coords">(${Number(item.latitude).toFixed(4)}, ${Number(item.longitude).toFixed(4)})</span>
+              <span class="ticker-comment">${symbolStr}</span>
+            </div>`;
+        });
+      }
+
+      track.innerHTML = htmlContent;
 
     } catch (error) {
       console.error("Fehler beim Ticker-Abruf:", error);
@@ -241,7 +251,7 @@
   }
 
   fetchTickerData();
-  setInterval(fetchTickerData, 180000);
+  setInterval(fetchTickerData, REFRESH_MS);
 </script>
 
 </body>
